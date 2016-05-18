@@ -8,10 +8,11 @@ from .dev import stdmeta
 from .dev._bouth23 import u
 from .dev._exceptions import (NoDataForSelectorError, RecordMappingError)
 from .dev.webquery import query as wquery
+from xml.dom import minidom
 
 UA = 'isbnlib (gzip)'
 SERVICE_URL = 'http://classify.oclc.org/classify2/Classify?isbn={isbn}'\
-              '&maxRecs=1&summary=true'
+              '&maxRecs=1'
 LOGGER = logging.getLogger(__name__)
 
 RE_FLDS = re.compile(r'\s([a-z]+)="', re.I | re.M | re.S)
@@ -47,6 +48,7 @@ def _mapper(isbn, records):
         canonical['Year'] = records.get('hyr', u('')) or records.get('lyr',
                                                                      u(''))
         canonical['Language'] = records.get('lang', u(''))
+        canonical['Categories'] = records.get('categories', [])
     except:  # pragma: no cover
         LOGGER.debug("RecordMappingError for %s with data %s", isbn, records)
         raise RecordMappingError(isbn)
@@ -72,8 +74,19 @@ def reparser(xmlthing):
             buf = match.group()
             flds = RE_FLDS.findall(buf)
             vals = RE_VALS.findall(buf)
-            return dict(zip(flds, vals))
-        except:
+
+            xmldoc = minidom.parseString(xmlthing)
+            d = xmldoc.getElementsByTagName('classify')[0]
+            categories = []
+            for heading in d.getElementsByTagName('heading'):
+                category = heading.firstChild.data.strip()
+                categories.append(category)
+
+            retval = dict(zip(flds, vals))
+            retval["categories"] = categories
+            return retval
+        except Exception as e:
+            print e
             # FIXME
             pass
     return
