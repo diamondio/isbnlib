@@ -8,7 +8,7 @@ from ._exceptions import NotValidMetadataError
 from ._helpers import normalize_space, titlecase
 
 # For now you cannot add custom fields!
-FIELDS = ('ISBN-13', 'Title', 'Authors', 'Publisher', 'Year', 'Language')
+FIELDS = ('ISBN-13', 'Title', 'Authors', 'Publisher', 'Year', 'Language', 'Categories')
 LOGGER = logging.getLogger(__name__)
 
 
@@ -36,10 +36,13 @@ class Metadata(object):
         """Clean fields of value."""
         self._content.update((k, broom(v))
                              for k, v in list(self._content.items())
-                             if k != 'Authors' and k not in exclude)
+                             if k != 'Authors' and k != 'Categories' and k not in exclude)
         if 'Authors' not in exclude:
             self._content['Authors'] = [broom(i)
                                         for i in self._content['Authors']]
+        if 'Categories' not in exclude:
+            self._content['Categories'] = [broom(i)
+                                        for i in self._content['Categories']]
         self._content['Title'] = self._content['Title'].strip(',.:;-_ ')
         if self._content['Language'].lower() in ('en', 'eng', 'english'):
             self._content['Title'] = titlecase(self._content['Title'])
@@ -84,9 +87,11 @@ class Metadata(object):
         # 'minimal' check
         for k in self._content:
             if not type(self._content[k]) is type3str():
-                if k != 'Authors':
+                if k != 'Authors' and k != 'Categories':
                     return False
         if not type(self._content['Authors']) is list:
+            return False
+        if not type(self._content['Categories']) is list:
             return False
         return True
 
@@ -94,6 +99,7 @@ class Metadata(object):
         """Set an empty value record."""
         self._content = dict.fromkeys(list(FIELDS), u(''))
         self._content['Authors'] = [u('')]
+        self._content['Categories'] = []
 
 
 def stdmeta(records):
